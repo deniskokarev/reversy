@@ -154,20 +154,12 @@ int main(int argc, char *argv[]) {
 	}
 	if (comp_turn) {
 		fprintf(flog, "Thinking...\n");
-#ifdef DEBUG
-		fdebug_graph = fopen("minimax.dot", "w");
-		fprintf(fdebug_graph, "digraph M {\n");
-#endif
-		find_best_turn(&turn, state, color, srch_depth, GAME_SCORE_MAX);
+		find_best_turn(&turn, state, color, srch_depth);
 		if (turn.x < 0) {
 			fprintf(flog, "There are no turns by color '%c'\n", color2abbr(color));
 			print_position(state);
 			exit(254);
 		}
-#ifdef DEBUG
-		fprintf(fdebug_graph, "}");
-		fclose(fdebug_graph);
-#endif
 	}
 	fprintf(flog, "Making turn by '%c' to [%d:%d]\n", color2abbr(turn.color), turn.x+1, turn.y+1);
 	if ( (e_code = make_turn(state, &turn)) ) {
