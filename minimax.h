@@ -4,12 +4,14 @@
 #include "game.h"
 #include <limits.h>
 
-#define	GAME_SCORE			int
-#define GAME_SCORE_MAX		INT_MAX-1
-#define GAME_SCORE_MIN		INT_MIN+1
+#define	GAME_SCORE			short int
+#define GAME_SCORE_MAX		0x7FFF-1
+#define GAME_SCORE_MIN		0x8000+1
 
-/* Use Alpha-Beta restrictions (several times faster) */
-#define ALPHA_BETA_CUT_ON
+#ifdef DEBUG
+#include <stdio.h>
+extern FILE * fdebug_graph;
+#endif
 
 /*
  * Find best turn on position 'state' by color 'color'
