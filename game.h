@@ -3,10 +3,23 @@
 
 #define MAX_DIM			8
 
+/* inline memcpy(void *tgt, void *src, int nsize) function */
+#define XMEMCPY(T, S, N) { \
+	int i; \
+	char *t1, *s1; \
+	long long *t8 = (long long*)T, *s8 = (long long*)S; \
+	for(i=0; i<(N>>3); i++) \
+		*t8++ = *s8++; \
+	t1 = (char*)t8; \
+	s1 = (char*)s8; \
+	for(i<<=3; i<N; i++) \
+		*t1++ = *s1++; \
+}
+
 typedef enum { 
- 	COLOR_VACANT =	0x0000,
- 	COLOR_WHITE =	0x0001,
- 	COLOR_BLACK =	0x0002
+ 	COLOR_VACANT =	0,
+ 	COLOR_WHITE =	1,
+ 	COLOR_BLACK =	2
 } CHIP_COLOR;
 
 /*
@@ -25,7 +38,7 @@ typedef struct tagGAME_TURN {
 /* invalid for OPPOSITE_COLOR(COLOR_VACANT, COLOR_VACANT)*/
 #define SAME_COLOR(A, B)		(A == B)
 #define OPPOSITE_COLOR(A, B)	((A | B) == 0x0003)
-#define ALTER_COLOR(A)			(A ^ 0x0003)
+#define ALTER_COLOR(A)			(CHIP_COLOR)(A ^ 0x0003)
 
 #define E_OK		0
 #define E_OCC		1

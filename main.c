@@ -13,7 +13,7 @@ CHIP_COLOR abbr2color(char abbr) {
 	return (abbr == '.' ? COLOR_VACANT : (abbr == '+' ? COLOR_WHITE : COLOR_BLACK));
 }
 
-void print_position(const GAME_STATE state) {
+void print_position(GAME_STATE state) {
 	int		x, y;
 
 	for (y = 0; y < MAX_DIM; y++) {
@@ -42,37 +42,37 @@ void read_position(GAME_STATE state, FILE *fin) {
 			break;
 		case EOF:
 			return;
-		default:
 		}
 	}
 }
 
 void usage(FILE *fout, char *cmd_name) {
-	fprintf(fout, "Game \"Reversy\"\n\
-Reads game position from file or standard input and\n\
-prints new position to standard output. Optionally makes\n\
-log file with performed operations.\n\
-Usage: %s [-i <file>] [-c <color>] [-p <x:y>] [-d <srch depth>] [-l <file>]\n\
-\t[-i <file>] read startup game position; - means stdin\n\
-\t[-c <color>] whose turn is now? ('+' by default)\n\
-\t[-p <x:y>] make turn at position x:y by color given in -c parameter
-\t\tif no -p was given computer will make a turn.\n\
-\t[-d <srch depth>] computer will find the best turn by provisioning <depth>\n\
-\t\tturns ahead. By default <depth> = 5. Estimated search time for\n\
-\t\t<depth> = 6 is ~ 20 sec in midgame. on PIII 1GHz\n\
-\t[-l <file>] write turn to log file\n\
-\t<color> can be '+' or '*'\n\
-\t<file> with position should have 8 rows with 8 space delimetered fields\n\
-\t\t'+' or '*' chips, or '.' for vacant place\n", cmd_name); 
+	fprintf(fout, "Game \"Reversy\"\n"
+			"Reads game position from file or standard input and\n"
+			"prints new position to standard output. Optionally makes\n"
+			"log file with performed operations.\n"
+			"Usage: %s [-i <file>] [-c <color>] [-p <x:y>] [-d <srch depth>] [-l <file>]\n"
+			"\t[-i <file>] read startup game position; - means stdin\n"
+			"\t[-c <color>] whose turn is now? ('+' by default)\n"
+			"\t[-p <x:y>] make turn at position x:y by color given in -c parameter"
+			"\t\tif no -p was given computer will make a turn.\n"
+			"\t[-d <srch depth>] computer will find the best turn by provisioning <depth>\n"
+			"\t\tturns ahead. By default <depth> = 5. Estimated search time for\n"
+			"\t\t<depth> = 6 is ~ 20 sec in midgame. on PIII 1GHz\n"
+			"\t[-l <file>] write turn to log file\n"
+			"\t<color> can be '+' or '*'\n"
+			"\t<file> with position should have 8 rows with 8 space delimetered fields\n"
+			"\t\t'+' or '*' chips, or '.' for vacant place\n",
+			cmd_name); 
 }
 
 int main(int argc, char *argv[]) {
 	char		*fin_name = "", *flog_name = "/dev/null";
 	char		scolor[2];
-	char		c;
+	int			c;
 	FILE		*fin, *flog;
 	GAME_STATE	state;
-	GAME_TURN	turn = {0, 0, COLOR_VACANT};
+	GAME_TURN	turn = {COLOR_VACANT, 0, 0};
 	int			comp_turn = 1;
 	int			srch_depth = 5;
 	int			e_code = 0;
@@ -154,12 +154,20 @@ int main(int argc, char *argv[]) {
 	}
 	if (comp_turn) {
 		fprintf(flog, "Thinking...\n");
+#ifdef DEBUG
+		fdebug_graph = fopen("minimax.dot", "w");
+		fprintf(fdebug_graph, "digraph M {\n");
+#endif
 		find_best_turn(&turn, state, color, srch_depth, GAME_SCORE_MAX);
 		if (turn.x < 0) {
 			fprintf(flog, "There are no turns by color '%c'\n", color2abbr(color));
 			print_position(state);
 			exit(254);
 		}
+#ifdef DEBUG
+		fprintf(fdebug_graph, "}");
+		fclose(fdebug_graph);
+#endif
 	}
 	fprintf(flog, "Making turn by '%c' to [%d:%d]\n", color2abbr(turn.color), turn.x+1, turn.y+1);
 	if ( (e_code = make_turn(state, &turn)) ) {

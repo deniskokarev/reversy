@@ -1,11 +1,11 @@
 #include "game.h"
+
+#ifdef DEBUG
 #include <stdio.h>
-#include <string.h>
+#endif
 
 #define min(A,B) ((A<B) ? A : B)
 #define max(A,B) ((A>B) ? A : B)
-
-/* #define DEBUG */
 
 /*
  * Flip over 1D array of chips. Actually array of pointers to chips.
@@ -104,10 +104,12 @@ int flip_axises(GAME_STATE state, const GAME_TURN *turn) {
 		/* try x=7 */
 		x = MAX_DIM - 1;
 		y = turn->y + turn->x - x;
+#ifdef DEBUG
 		if (y < 0) {
 			printf("!!! Unresolved equation !!!\n");
 			exit(1);
 		}
+#endif
 	}
 	for (; (x >= 0) && (y < MAX_DIM); x--, y++) {
 		if (x == turn->x) pos = flip_size;
@@ -176,7 +178,7 @@ int validate_turn(const GAME_STATE state, const GAME_TURN *turn) {
 
 	if (! (e_code = quick_validate_turn(state, turn))) {
 		/* Quick checking is OK */
-		memcpy(tmp_state, state, sizeof(GAME_STATE));
+		XMEMCPY(tmp_state, state, sizeof(GAME_STATE));
 		if (! flip_axises(tmp_state, turn)) {
 			/* Slow flip_axises is ERR */
 			e_code = E_NO_FLIPS;
