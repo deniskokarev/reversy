@@ -52,15 +52,18 @@ void usage(FILE *fout, char *cmd_name) {
 Reads game position from file or standard input and\n\
 prints new position to standard output. Optionally makes\n\
 log file with performed operations.\n\
-Usage: %s [-i <file>] [-c <color>] [-p <x:y>] [-l <file>]\n\
+Usage: %s [-i <file>] [-c <color>] [-p <x:y>] [-d <srch depth>] [-l <file>]\n\
 \t[-i <file>] read startup game position; - means stdin\n\
 \t[-c <color>] whose turn is now? ('+' by default)\n\
 \t[-p <x:y>] make turn at position x:y by color given in -c parameter
-\t\tif no -p was given computer will make a turn.
-\t[-l <file>] write turn to log
-<color> can be '+' or '*'\n\
-<file> with position should have 8 rows with 8 space delimetered fields\n\
-'+' or '*' chips, or '.' for vacant place\n", cmd_name); 
+\t\tif no -p was given computer will make a turn.\n\
+\t[-d <srch depth>] computer will find the best turn by provisioning <depth>\n\
+\t\tturns ahead. By default <depth> = 5. Estimated search time for\n\
+\t\t<depth> = 6 is ~ 20 sec in midgame. on PIII 1GHz\n\
+\t[-l <file>] write turn to log file\n\
+\t<color> can be '+' or '*'\n\
+\t<file> with position should have 8 rows with 8 space delimetered fields\n\
+\t\t'+' or '*' chips, or '.' for vacant place\n", cmd_name); 
 }
 
 int main(int argc, char *argv[]) {
@@ -71,12 +74,13 @@ int main(int argc, char *argv[]) {
 	GAME_STATE	state;
 	GAME_TURN	turn = {0, 0, COLOR_VACANT};
 	int			comp_turn = 1;
+	int			srch_depth = 5;
 	int			e_code = 0;
 
 	CHIP_COLOR	color = COLOR_WHITE;
 
 	opterr = 0;
-	while((c = getopt(argc, argv, "i:c:p:l:")) > 0) {
+	while((c = getopt(argc, argv, "i:c:p:d:l:")) > 0) {
 		switch(c) {
 		case 'i':
 			fin_name = optarg;
@@ -103,6 +107,12 @@ int main(int argc, char *argv[]) {
 			turn.x --;
 			turn.y --;
 			comp_turn = 0;
+			break;
+		case 'd':
+			if ((sscanf(optarg, "%d", &srch_depth) != 1) || (srch_depth < 0) ) {
+				fprintf(stderr, "-d parameter should be >= 0\n");
+				usage(stderr, argv[0]);
+			} 
 			break;
 		case 'l':
 			flog_name = optarg;
@@ -144,7 +154,7 @@ int main(int argc, char *argv[]) {
 	}
 	if (comp_turn) {
 		fprintf(flog, "Thinking...\n");
-		find_best_turn(&turn, state, color, 5, GAME_SCORE_MAX);
+		find_best_turn(&turn, state, color, srch_depth, GAME_SCORE_MAX);
 		if (turn.x < 0) {
 			fprintf(flog, "There are no turns by color '%c'\n", color2abbr(color));
 			print_position(state);
