@@ -1,78 +1,16 @@
 #include "game.h"
 #include <stdio.h>
+#include <string.h>
 
 #define min(A,B) ((A<B) ? A : B)
 #define max(A,B) ((A>B) ? A : B)
 
-#define DEBUG
+/* #define DEBUG */
 
-/* axis directions for scan_diag() */
-typedef enum {D_HORIZ = 0x0001,
-			  D_VERT = 0x0002,
-			  D_UPLEFT = 0x0004,
-			  D_UPRIGHT = 0x0008,
-			  D_ALL=0x000F
-} DIAGONAL;
-
-typedef int FLIP_FUN(CHIP_COLOR *row[MAX_DIM], int size, CHIP_COLOR target_color, int pos);
-
-int scan_diag(GAME_STATE *state, const GAME_TURN *turn, DIAGONAL diag,
-			  FLIP_FUN *flip_fun) {
-	CHIP_COLOR	*for_flip[MAX_DIM];
-	int			flip_size, pos;
-	int			x, y;
-	int			flip = 0;
-
-	if (diag & D_HORIZ) {
-		flip_size = 0;
-		for (x = 0, y = turn->y; x < MAX_DIM; x++) {
-			if (x == turn->x) pos = flip_size;
-			for_flip[flip_size++] = &((*state)[x][y]);
-		}
-		flip += flip_fun(for_flip, flip_size, turn->color, pos);
-	}
-	if (diag & D_VERT) {
-		flip_size = 0;
-		for (x = turn->x, y = 0; y < MAX_DIM; y++) {
-			if (y == turn->y) pos = flip_size;
-			for_flip[flip_size++] = &((*state)[x][y]);
-		}
-		flip += flip_fun(for_flip, flip_size, turn->color, pos);
-	}
-	if (diag & D_UPLEFT) {
-		flip_size = 0;
-		/* simple solution */
-		x = max(0, (turn->x - turn->y));
-		y = max(0, (turn->y - turn->x));
-		for (; (x < MAX_DIM) && (y < MAX_DIM); x++, y++) {
-			if (x == turn->x) pos = flip_size;
-			for_flip[flip_size++] = &((*state)[x][y]);
-		}
-		flip += flip_fun(for_flip, flip_size, turn->color, pos);
-	}
-	if (diag & D_UPRIGHT) {
-		flip_size = 0;
-		/* try y=0 */
-		y = 0;
-		x = turn->y + turn->x;
-		if (x >= MAX_DIM) {
-			/* try x=7 */
-			x = MAX_DIM - 1;
-			y = turn->y + turn->x - x;
-			if (y < 0) {
-				printf("!!! Unresolved equation !!!\n");
-				exit(1);
-			}
-		}
-		for (; (x >= 0) && (y < MAX_DIM); x--, y++) {
-			if (x == turn->x) pos = flip_size;
-			for_flip[flip_size++] = &((*state)[x][y]);
-		}
-		flip += flip_fun(for_flip, flip_size, turn->color, pos);
-	}
-	return flip;
-}
-
+/*
+ * Flip over 1D array of chips. Actually array of pointers to chips.
+ * Return number of captured ones.
+ */
 int flip_row(CHIP_COLOR *row[MAX_DIM], int size, CHIP_COLOR target_color, int pos) {
 
 	int flip = 0;
@@ -116,68 +54,93 @@ int flip_row(CHIP_COLOR *row[MAX_DIM], int size, CHIP_COLOR target_color, int po
 	return flip;
 } 
 
-int flip_row_check_only(CHIP_COLOR *row[MAX_DIM], int size, CHIP_COLOR target_color, int pos) {
-	int flip = 0;
-	int	i;
+/*
+ * Scan and try to flip all axises relative to given 'turn'
+ * Don't touch 'turn' field itself.
+ * We make axis projection on 1D array and call flip_row()
+ * for every axis.
+ * Return number of captured chips. 
+ */
+int flip_axises(GAME_STATE state, const GAME_TURN *turn) {
+	CHIP_COLOR	*for_flip[MAX_DIM];
+	int			flip_size, pos = 0;
+	int			x, y;
+	int			flip = 0;
 
-	for (i = pos-1; (i >= 0) && OPPOSITE_COLOR(*(row[i]), target_color); i--);
-	if ( (i >= 0) && SAME_COLOR(*(row[i++]), target_color))
-		for(; i < pos; i++, flip++);
-	for (i = pos+1; (i < size) && OPPOSITE_COLOR(*(row[i]), target_color); i++);
-   	if ( (i < size) && SAME_COLOR(*(row[i--]), target_color))
-		for (; i > pos; i--, flip++);
+	/* LEFT->RIGHT */
+	flip_size = 0;
+	for (x = 0, y = turn->y; x < MAX_DIM; x++) {
+		if (x == turn->x) pos = flip_size;
+		for_flip[flip_size++] = &(state[x][y]);
+	}
+	flip += flip_row(for_flip, flip_size, turn->color, pos);
+
+	/* UP->DOWN */
+	flip_size = 0;
+	for (x = turn->x, y = 0; y < MAX_DIM; y++) {
+		if (y == turn->y) pos = flip_size;
+		for_flip[flip_size++] = &(state[x][y]);
+	}
+	flip += flip_row(for_flip, flip_size, turn->color, pos);
+
+	/* UP_LEFT -> DOWN_RIGHT */ 
+	flip_size = 0;
+	/* simple solution */
+	x = max(0, (turn->x - turn->y));
+	y = max(0, (turn->y - turn->x));
+	for (; (x < MAX_DIM) && (y < MAX_DIM); x++, y++) {
+		if (x == turn->x) pos = flip_size;
+		for_flip[flip_size++] = &(state[x][y]);
+	}
+	flip += flip_row(for_flip, flip_size, turn->color, pos);
+
+	/* UP_RIGHT->DOWN_LEFT */
+	/* choose between two possible UP_RIGHT cases (y=0 or x=7) */
+	flip_size = 0;
+	/* try y=0 */
+	y = 0;
+	x = turn->y + turn->x;
+	if (x >= MAX_DIM) {
+		/* try x=7 */
+		x = MAX_DIM - 1;
+		y = turn->y + turn->x - x;
+		if (y < 0) {
+			printf("!!! Unresolved equation !!!\n");
+			exit(1);
+		}
+	}
+	for (; (x >= 0) && (y < MAX_DIM); x--, y++) {
+		if (x == turn->x) pos = flip_size;
+		for_flip[flip_size++] = &(state[x][y]);
+	}
+	flip += flip_row(for_flip, flip_size, turn->color, pos);
+
 	return flip;
-} 
+}
+
 
 /* 
  * Make turn on position 'state'.
  * Return amount of flip overs
  */
-int game_turn(GAME_STATE *state, const GAME_TURN *turn) {
-	(*state)[turn->x][turn->y] = turn->color; 
-	return scan_diag(state, turn, D_ALL, flip_row);
-}
+int make_turn(GAME_STATE state, const GAME_TURN *turn) {
+	int flip;
 
-/*
- * Evaluate position 'state'
- */
-double game_eval(const GAME_STATE *state) {
-	return 0.0;
-}
-
-/*
- * Turns generator
- * Pick next possible turn in game position state with turn history 'turn_hist'
- * returns 0 if no possible turns left
- */
-int get_next_turn(GAME_TURN *turn, const GAME_STATE *state, const GAME_TURN_HIST *hist) {
-	int			first_x;
-	GAME_TURN	t;
-
-	t.color = hist->color;
-
-	first_x = hist->x+1;
-	for (t.y = hist->y; t.y < MAX_DIM; t.y++) {
-		for(t.x = first_x; t.x < MAX_DIM; t.x++) {
-			if (validate_turn(state, &t) == E_OK) {
-				*turn = t;
-				return 1;
-			}
-		}
-		first_x = 0;
+	flip = flip_axises(state, turn);
+	if (flip) {
+		/* if there is something to capture */
+		state[turn->x][turn->y] = turn->color; 
 	}
-	return 0;
+	return flip;
 }
 
 /*
- * Validate turn
- * returns
+ * Make quick validation; sutable for automatic turn generation
+ * returns. The final answer could be made only by flip_axises()
  * 0 - E_OK - Ok
- * 1 - E_OCC - is already occupied
- * 2 - E_NO_OPP - no opposite chips around
- * 3 - E_NO_FLIPS - no flips
+ * otherwise - error
  */
-int validate_turn(const GAME_STATE *state, const GAME_TURN *turn) {
+int quick_validate_turn(const GAME_STATE state, const GAME_TURN *turn) {
 	int			x, y;
 	CHIP_COLOR	color;
 	
@@ -185,40 +148,89 @@ int validate_turn(const GAME_STATE *state, const GAME_TURN *turn) {
 	y = turn->y;
 	color = turn->color;
 	/* you cannot make a turn if this place is already occupied */
-	if ((*state)[x][y] != COLOR_VACANT) return E_OCC;
+	if (state[x][y] != COLOR_VACANT) return E_OCC;
 
 	/* you cannot make a turn if there is no opposite chips around */
 	for (x = min(turn->x-1, 0); x < max(turn->x+1, MAX_DIM); x++) {
 		for (y = min(turn->y-1, 0); y < max(turn->y+1, MAX_DIM); y++) {
-			if (OPPOSITE_COLOR((*state)[x][y], color)) {
-				goto flip_check;
+			if (OPPOSITE_COLOR(state[x][y], color)) {
+				return E_OK;
 			}
 		}
 	}
 	return E_NO_OPP; /* no opposites around */
-
- flip_check:
-	/* you cannot make a turn if there is no opposite chips to flip over */
-	if (scan_diag(state, turn, D_HORIZ, flip_row_check_only)) {
-		return E_OK; /* ok */
-	}
-	if (scan_diag(state, turn, D_VERT, flip_row_check_only)) {
-		return E_OK; /* ok */
-	}
-	if (scan_diag(state, turn, D_UPLEFT, flip_row_check_only)) {
-		return E_OK; /* ok */
-	}
-	if (scan_diag(state, turn, D_UPRIGHT, flip_row_check_only)) {
-		return E_OK; /* ok */
-	}
-	return E_NO_FLIPS; /* no flip overs found */
 }
 
 /*
- * Append turn to history
+ * Validate turn
+ * Don't use it in automatic procedures, because of it is slow.
+ * returns
+ * 0 - E_OK - Ok
+ * 1 - E_OCC - is already occupied
+ * 2 - E_NO_OPP - no opposite chips around
+ * 3 - E_NO_FLIPS - no flips
  */
-void log_turn(GAME_TURN_HIST *hist, const GAME_TURN *turn) {
-	hist->x = turn->x;
-	hist->y = turn->y;
-	hist->color = turn->color;
+int validate_turn(const GAME_STATE state, const GAME_TURN *turn) {
+	GAME_STATE	tmp_state;
+	int			e_code;
+
+	if (! (e_code = quick_validate_turn(state, turn))) {
+		/* Quick checking is OK */
+		memcpy(tmp_state, state, sizeof(GAME_STATE));
+		if (! flip_axises(tmp_state, turn)) {
+			/* Slow flip_axises is ERR */
+			e_code = E_NO_FLIPS;
+		}
+	}
+	return e_code;
 }
+
+/*
+ * Turns generator. Don't use it in solution search, because of it is slow.
+ * Makes a list of possible turns in game position 'state' by color 'color'
+ * returns 0 if no possible turns left
+ */
+int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], const GAME_STATE state, CHIP_COLOR color) {
+	GAME_TURN	t;
+	int			i = 0;
+
+	t.color = color;
+	for (t.x = 0; t.x < MAX_DIM; t.x++) {
+		for (t.y = 0; t.y < MAX_DIM; t.y++) {
+			if (! validate_turn(state, &t)) {
+				turn[i++] = t;
+			}
+		}
+	}
+	return i;
+}
+
+/*
+ * Account chips of certain color on position 'state'
+ */
+int chips_count(const GAME_STATE state, CHIP_COLOR color) {
+	int	i = 0;
+	int	x, y;
+
+	for (x = 0; x < MAX_DIM; x++) {
+		for (y = 0; y < MAX_DIM; y++) {
+			if (SAME_COLOR(state[x][y], color))
+				i++;
+		}
+	}
+	return i;
+}
+
+int game_is_over(const GAME_STATE state) {
+	int	x, y;
+
+	for (x = 0; x < MAX_DIM; x++) {	
+		for (y = 0; y < MAX_DIM; y++) {
+			if (SAME_COLOR(state[x][y], COLOR_VACANT)) {
+				return 0;
+			}
+		}
+	}
+	return 1;
+}
+
