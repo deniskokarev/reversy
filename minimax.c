@@ -1,64 +1,60 @@
 #include "minimax.h"
 #include <string.h>
-#include <math.h>
 
-double m_weight[MAX_DIM][MAX_DIM] = {
-	{ 5.0, -1.0,  3.0,  3.0,  3.0,  3.0, -1.0,  5.0},
+/*
+ * The estimated value for each field on the game board
+ */
+GAME_SCORE m_weight[MAX_DIM][MAX_DIM] = {
+	{ 5, -1,  3,  3,  3,  3, -1,  5},
  
-	{-1.0, -2.0, -1.0, -1.0, -1.0, -1.0, -2.0, -1.0},
+	{-1, -2, -1, -1, -1, -1, -2, -1},
 
-	{ 3.0, -1.0,  1.0,  1.0,  1.0,  1.0, -1.0,  3.0},
+	{ 3, -1,  1,  1,  1,  1, -1,  3},
 
-	{ 3.0, -1.0,  1.0,  1.0,  1.0,  1.0, -1.0,  3.0},
+	{ 3, -1,  1,  1,  1,  1, -1,  3},
 
-	{ 3.0, -1.0,  1.0,  1.0,  1.0,  1.0, -1.0,  3.0},
+	{ 3, -1,  1,  1,  1,  1, -1,  3},
 
-	{ 3.0, -1.0,  1.0,  1.0,  1.0,  1.0, -1.0,  3.0},
+	{ 3, -1,  1,  1,  1,  1, -1,  3},
 
-	{-1.0, -2.0, -1.0, -1.0, -1.0, -1.0, -2.0, -1.0},
+	{-1, -2, -1, -1, -1, -1, -2, -1},
 
-	{ 5.0, -1.0,  3.0,  3.0,  3.0,  3.0, -1.0,  5.0},
+	{ 5, -1,  3,  3,  3,  3, -1,  5},
 
 };
 
 /*
- * Evaluate position 'state'
+ * Evaluate position 'state', using estimation matrix
  */
-double game_eval(const GAME_STATE state, CHIP_COLOR color) {
-	double	eval = 0.0;
+GAME_SCORE game_eval(const GAME_STATE state, CHIP_COLOR color) {
+	GAME_SCORE	eval[3] = {0, 0, 0};
 	int		x, y;	
 
 	for (x = 0; x < MAX_DIM; x++) {
 		for (y = 0; y < MAX_DIM; y++) {
-			if (SAME_COLOR(state[x][y], color)) {
-				eval += m_weight[x][y];
-			} else if (!SAME_COLOR(state[x][y], COLOR_VACANT)) {
-				eval -= m_weight[x][y];
-			}
+			eval[state[x][y]] += m_weight[x][y];
 		}
 	}
-	return eval;
+	return eval[color] - eval[ALTER_COLOR(color)];
 }
 
-/*
- * Find best turn on position 'state' by color 'color'
- * Look ahead in 'depth' moves
- */
-double find_best_turn(GAME_TURN *best_turn, 
-				   const GAME_STATE state,
-				   CHIP_COLOR color,
-   				   int depth)
+GAME_SCORE find_best_turn(GAME_TURN *best_turn, 
+					  const GAME_STATE state,
+					  CHIP_COLOR color,
+					  int depth,
+					  GAME_SCORE simt)
 {
 	GAME_TURN	t, adv_best_turn;
 	GAME_STATE	tmp_state;
 	int			turns_revised = 0;
 	int			captured = 0;
-	double		ascore, best_score;
+	GAME_SCORE		ascore, best_score;
 	
 	/* assume there are no turns */
 	best_turn->x = -1;
 	best_turn->y = -1;
-	best_score = -99999999.9;
+	best_score = GAME_SCORE_MIN;
+	/* copy game position */
 	memcpy(tmp_state, state, sizeof(GAME_STATE));
 	t.color = color;
 	for (t.x = 0; t.x < MAX_DIM; t.x++) {
@@ -70,30 +66,41 @@ double find_best_turn(GAME_TURN *best_turn,
 						ascore = -find_best_turn(&adv_best_turn,
 												 tmp_state,
 												 ALTER_COLOR(color),
-												 depth-1);
+												 depth-1,
+												 -best_score);
 					} else {
 						ascore = game_eval(tmp_state, color);
 					}
-					memcpy(tmp_state, state, sizeof(GAME_STATE));
+					memcpy(tmp_state, state, sizeof(GAME_STATE)); /* undo make_turn() */
 					turns_revised++;
 					if (ascore > best_score) {
 						best_score = ascore;
 						*best_turn = t;
 					}
+#ifdef ALPHA_BETA_CUT_ON
+					/* Check for Alpha or Beta cut on the game tree */ 
+ 					if (best_score > simt) {
+ 						return (best_score);
+ 					}
+#endif
 				}
 			}
 		}
 	}
-	if (!turns_revised) { /* No more turns */
-		if (game_is_over(state)) {
-			/* because - Game is over */
-			best_score = (chips_count(state, color) - chips_count(state, ALTER_COLOR(color))) * 100.0;
-		} else {
+	if (!turns_revised) { /* No more turns found */
+		if (depth) {
 			/* try turn of the contendor */
 			best_score = -find_best_turn(&adv_best_turn,
 										 tmp_state,
 										 ALTER_COLOR(color),
-										 depth);
+										 depth-1,
+										 -simt);
+		} else {
+			/* 
+			 * we've reached the final leaf and there are no possible turns,
+			 * probably game is just over at this point
+			 */
+			best_score = (chips_count(state, color) - chips_count(state, ALTER_COLOR(color))) * 100;
 		}
 	}
 	return (best_score);
