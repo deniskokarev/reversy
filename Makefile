@@ -1,18 +1,24 @@
-CFLAGS=-g -Wall
+#CFLAGS=-g -Wall
+CFLAGS=-O3 -Wall
 
 PROG=reversy
-OBJS=game.o minimax.o main.o
+LIB=libreversy.a
+OBJS=game.o minimax.o
 
 all: $(PROG)
 
 #.c.o:
 #	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(PROG): $(OBJS)
-	cc -o $(PROG) $(OBJS)
+$(PROG): main.o $(LIB)
+	cc -o $(PROG) main.o $(LIB)
+
+$(LIB): $(OBJS)
+	ar -r $(LIB) $(OBJS)
+	ranlib $(LIB)
 
 clean:
-	rm -f core *.o $(PROG) *~
+	rm -f core *.o $(PROG) $(LIB) *~
 
 game.o: game.h
 
