@@ -144,7 +144,7 @@ int main(int argc, char *argv[]) {
 	}
 	if (comp_turn) {
 		fprintf(flog, "Thinking...\n");
-		find_best_turn(&turn, state, color, 4);
+		find_best_turn(&turn, state, color, 5, GAME_SCORE_MAX);
 		if (turn.x < 0) {
 			fprintf(flog, "There are no turns by color '%c'\n", color2abbr(color));
 			print_position(state);
