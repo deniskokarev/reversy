@@ -37,24 +37,30 @@ GAME_SCORE game_eval(GAME_STATE state, CHIP_COLOR color) {
 	return eval[color] - eval[ALTER_COLOR(color)];
 }
 
-GAME_SCORE find_best_turn(GAME_TURN *best_turn, 
-					  GAME_STATE state,
-					  CHIP_COLOR color,
-					  int depth,
-					  GAME_SCORE simt)
+GAME_SCORE find_best_turn_intr(GAME_TURN *best_turn,
+							   GAME_STATE state,
+							   CHIP_COLOR color,
+							   int depth,
+							   GAME_SCORE simt,
+							   int (*is_stop)(int depth, void *param),
+							   void *is_stop_param)
 {
 	GAME_TURN	t, adv_best_turn;
 	GAME_STATE	tmp_state;
 	int			turns_revised = 0;
 	GAME_SCORE		ascore, best_score;
 	
-	/* copy game position */
-	XMEMCPY(tmp_state, state, sizeof(GAME_STATE));
-
 	/* assume there are no turns */
 	best_turn->x = -1;
 	best_turn->y = -1;
 	best_score = GAME_SCORE_MIN;
+
+	if (is_stop && is_stop(depth, is_stop_param))
+		return best_score;
+
+	/* copy game position */
+	XMEMCPY(tmp_state, state, sizeof(GAME_STATE));
+
 	t.color = color;
 	for (t.x = 0; t.x < MAX_DIM; t.x++) {
 		for (t.y = 0; t.y < MAX_DIM; t.y++) {
@@ -62,11 +68,13 @@ GAME_SCORE find_best_turn(GAME_TURN *best_turn,
 				if (make_turn(tmp_state, &t)) {
 					if (depth) {
 						/* find best for contendor */
-						ascore = -find_best_turn(&adv_best_turn,
-												 tmp_state,
-												 ALTER_COLOR(color),
-												 depth-1,
-												 -best_score);
+						ascore = -find_best_turn_intr(&adv_best_turn,
+													  tmp_state,
+													  ALTER_COLOR(color),
+													  depth-1,
+													  -best_score,
+													  is_stop,
+													  is_stop_param);
 					} else {
 						ascore = game_eval(tmp_state, color);
 					}
@@ -89,11 +97,13 @@ GAME_SCORE find_best_turn(GAME_TURN *best_turn,
 	if (!turns_revised) { /* No more turns found */
 		if (depth) {
 			/* try turn of the contendor */
-			best_score = -find_best_turn(&adv_best_turn,
-										 tmp_state,
-										 ALTER_COLOR(color),
-										 depth-1,
-										 -simt);
+			best_score = -find_best_turn_intr(&adv_best_turn,
+											  tmp_state,
+											  ALTER_COLOR(color),
+											  depth-1,
+											  -simt,
+											  is_stop,
+											  is_stop_param);
 		} else {
 			/* 
 			 * we've reached the final leaf and there are no possible turns,
@@ -104,4 +114,12 @@ GAME_SCORE find_best_turn(GAME_TURN *best_turn,
 	}
 ret:
 	return (best_score);
+}
+
+GAME_SCORE find_best_turn(GAME_TURN *best_turn, 
+							   GAME_STATE state,
+							   CHIP_COLOR color,
+							   int depth)
+{
+	return find_best_turn_intr(best_turn, state, color, depth, GAME_SCORE_MAX, 0, 0);
 }
