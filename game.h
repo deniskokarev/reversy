@@ -31,6 +31,7 @@ typedef struct tagGAME_TURN {
 #define E_OCC		1
 #define E_NO_OPP	2
 #define E_NO_FLIPS	3
+#define E_NO_TURNS	4
 
 /*
  * Turns generator. Don't use it in automatic procedures, because it is slow.
