@@ -1,4 +1,6 @@
-#CFLAGS=-g -Wall
+#CFLAGS=-g -Wall -DDEBUG -DALPHA_BETA_CUT_OFF
+
+# Use Alpha-Beta restrictions (several times faster)
 CFLAGS=-O3 -Wall
 
 PROG=reversy
@@ -15,7 +17,7 @@ $(PROG): main.o $(LIB)
 
 $(LIB): $(OBJS)
 	ar -r $(LIB) $(OBJS)
-	ranlib $(LIB)
+	#ranlib $(LIB)
 
 clean:
 	rm -f core *.o $(PROG) $(LIB) *~
