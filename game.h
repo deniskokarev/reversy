@@ -16,11 +16,12 @@
 		*t1++ = *s1++; \
 }
 
-typedef enum { 
- 	COLOR_VACANT =	0,
- 	COLOR_WHITE =	1,
- 	COLOR_BLACK =	2
-} CHIP_COLOR;
+
+typedef unsigned char CHIP_COLOR;
+
+#define	COLOR_VACANT	((CHIP_COLOR)0)
+#define	COLOR_WHITE		((CHIP_COLOR)1)
+#define	COLOR_BLACK		((CHIP_COLOR)2)
 
 /*
  * This is a Reversy game field 8x8 grid
@@ -51,13 +52,13 @@ typedef struct tagGAME_TURN {
  * Makes a list of possible turns in game position 'state' by color 'color'
  * returns 0 if no possible turns left
  */
-int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], const GAME_STATE state, CHIP_COLOR color);
+int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], GAME_STATE state, CHIP_COLOR color);
 
 /* 
  * Make turn on position 'state'.
  * Return amount of flip overs
  */
-int make_turn(GAME_STATE state, const GAME_TURN *turn);
+int make_turn(GAME_STATE state, GAME_TURN *turn);
 
 /*
  * Make quick validation; sutable for automatic turn generation
@@ -65,7 +66,7 @@ int make_turn(GAME_STATE state, const GAME_TURN *turn);
  * 0 - E_OK - Ok
  * otherwise - error
  */
-int quick_validate_turn(const GAME_STATE state, const GAME_TURN *turn);
+int quick_validate_turn(GAME_STATE state, GAME_TURN *turn);
 
 /*
  * Validate turn
@@ -76,13 +77,13 @@ int quick_validate_turn(const GAME_STATE state, const GAME_TURN *turn);
  * 2 - E_NO_OPP - no opposite chips around
  * 3 - E_NO_FLIPS - no flips
  */
-int validate_turn(const GAME_STATE state, const GAME_TURN *turn);
+int validate_turn(GAME_STATE state, GAME_TURN *turn);
 
 /*
  * Account chips of certain color on position 'state'
  */
-int chips_count(const GAME_STATE state, CHIP_COLOR color);
+int chips_count(GAME_STATE state, CHIP_COLOR color);
 
-int game_is_over(const GAME_STATE state);
+int game_is_over(GAME_STATE state);
 
 #endif /* #ifndef __GAME_H__ */

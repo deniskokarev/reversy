@@ -25,7 +25,7 @@ GAME_SCORE m_weight[MAX_DIM][MAX_DIM] = {
 /*
  * Evaluate position 'state', using estimation matrix
  */
-GAME_SCORE game_eval(const GAME_STATE state, CHIP_COLOR color) {
+GAME_SCORE game_eval(GAME_STATE state, CHIP_COLOR color) {
 	GAME_SCORE	eval[3] = {0, 0, 0};
 	int		x, y;	
 
@@ -37,16 +37,8 @@ GAME_SCORE game_eval(const GAME_STATE state, CHIP_COLOR color) {
 	return eval[color] - eval[ALTER_COLOR(color)];
 }
 
-#ifdef DEBUG
-#include <strings.h>
-FILE * fdebug_graph;
-#define node_name_sz	32
-char curr_node[node_name_sz] = "begin";
-int	node_seq_no;
-#endif
-
 GAME_SCORE find_best_turn(GAME_TURN *best_turn, 
-					  const GAME_STATE state,
+					  GAME_STATE state,
 					  CHIP_COLOR color,
 					  int depth,
 					  GAME_SCORE simt)
@@ -56,12 +48,6 @@ GAME_SCORE find_best_turn(GAME_TURN *best_turn,
 	int			turns_revised = 0;
 	GAME_SCORE		ascore, best_score;
 	
-#ifdef DEBUG
-	/* mark the graph's node */
-	char parent_node[node_name_sz];
-
-	XMEMCPY(parent_node, curr_node, sizeof(parent_node));
-#endif
 	/* copy game position */
 	XMEMCPY(tmp_state, state, sizeof(GAME_STATE));
 
@@ -74,11 +60,6 @@ GAME_SCORE find_best_turn(GAME_TURN *best_turn,
 		for (t.y = 0; t.y < MAX_DIM; t.y++) {
 			if (! quick_validate_turn(tmp_state, &t)) {
 				if (make_turn(tmp_state, &t)) {
-#ifdef DEBUG
-					sprintf(curr_node, "node%d", node_seq_no++);
-					fprintf(fdebug_graph, "\t%s [shape=point, color=%s];\n",
-							curr_node, (color == COLOR_BLACK) ? "black" : "gray");
-#endif
 					if (depth) {
 						/* find best for contendor */
 						ascore = -find_best_turn(&adv_best_turn,
@@ -89,17 +70,13 @@ GAME_SCORE find_best_turn(GAME_TURN *best_turn,
 					} else {
 						ascore = game_eval(tmp_state, color);
 					}
-#ifdef DEBUG
-					fprintf(fdebug_graph, "\t%s -> %s [label=\"[%d, %d] %d\"];\n", parent_node,
-							curr_node, t.x+1, t.y+1, ascore);
-#endif
 					XMEMCPY(tmp_state, state, sizeof(GAME_STATE)); /* undo make_turn() */
 					turns_revised++;
 					if (ascore > best_score) {
 						best_score = ascore;
 						*best_turn = t;
 					}
-#ifdef ALPHA_BETA_CUT_ON
+#ifndef ALPHA_BETA_CUT_OFF
 					/* Check for Alpha or Beta cut on the game tree */ 
  					if (best_score > simt) {
  						goto ret;
@@ -126,10 +103,5 @@ GAME_SCORE find_best_turn(GAME_TURN *best_turn,
 		}
 	}
 ret:
-
-#ifdef DEBUG
-	XMEMCPY(curr_node, parent_node, sizeof(parent_node));
-#endif
-
 	return (best_score);
 }
