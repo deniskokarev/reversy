@@ -2,30 +2,53 @@
 
 #define min(A,B) ((A<B) ? A : B)
 #define max(A,B) ((A>B) ? A : B)
+#define dim(X)	(sizeof(X)/sizeof(X[0]))
+
+typedef struct {
+	int x, y;
+	int px, py;
+} AXIS_ITERATOR;
+
+typedef enum {
+	AXIS_DIR_BACKWARD = -1,
+	AXIS_DIR_FORWARD = 1
+} AXIS_DIR;
+
+static CHIP_COLOR *axis_iter_next(GAME_STATE state, AXIS_ITERATOR *iter, AXIS_DIR dir) {
+	int new_x = iter->x + iter->px*dir;
+	int new_y = iter->y + iter->py*dir;
+	if (new_x >= 0 && new_x < MAX_DIM && new_y >= 0 && new_y < MAX_DIM) {
+		iter->x = new_x;
+		iter->y = new_y;
+		return &state[iter->x][iter->y];
+	} else {
+		return 0;
+	}
+}
 
 /*
- * Flip over 1D array of chips. Actually array of pointers to chips.
+ * Flip over 1D array of chips.
  * Return number of captured ones.
  */
-int flip_row(CHIP_COLOR *state, unsigned char ofs[MAX_DIM], int size, CHIP_COLOR target_color, int pos) {
+static int flip_row(GAME_STATE state, AXIS_ITERATOR *iter, CHIP_COLOR target_color) {
 	int flip = 0;
-	int	i;
-
-	for (i = pos-1; (i >= 0) && OPPOSITE_COLOR(*(state+ofs[i]), target_color); i--);
-	if ( (i >= 0) && SAME_COLOR(*(state+ofs[i++]), target_color))
-		while (i < pos) {
-			*(state+ofs[i++]) = target_color;
+	CHIP_COLOR	*pcolor;
+	int n = 0;
+	pcolor = axis_iter_next(state, iter, AXIS_DIR_BACKWARD);
+	while (pcolor && OPPOSITE_COLOR(*pcolor, target_color)) {
+		pcolor = axis_iter_next(state, iter, AXIS_DIR_BACKWARD);
+		n++;
+	}
+	if (pcolor && SAME_COLOR(*pcolor, target_color)) {
+		while (n>0) {
+			pcolor = axis_iter_next(state, iter, AXIS_DIR_FORWARD);
+			*pcolor = target_color;
 			flip++;
+			n--;
 		}
-	for (i = pos+1; (i < size) && OPPOSITE_COLOR(*(state+ofs[i]), target_color); i++);
-   	if ( (i < size) && SAME_COLOR(*(state+ofs[i--]), target_color))
-		while (i > pos) {
-			*(state+ofs[i--]) = target_color;
-			flip++;
-		}
+	}
 	return flip;
 } 
-
 
 /*
  * Scan and try to flip all axises relative to given 'turn'
@@ -35,84 +58,29 @@ int flip_row(CHIP_COLOR *state, unsigned char ofs[MAX_DIM], int size, CHIP_COLOR
  * Return number of captured chips. 
  */
 int flip_axises(GAME_STATE state, GAME_TURN *turn) {
-	static struct {
-		struct {
-			int size, pos;
-			unsigned char ofs[MAX_DIM];
-		} lr, ud, uldr, urdl;
-	} axss[MAX_DIM][MAX_DIM];
-	static int axss_ini = 0;
-	int			flip = 0;
+	/* VERTIVAL, HORIZONTAL, DIAGONAL, CROSS-DIAGONAL in both directions */
+	static AXIS_ITERATOR axises[4*2] = {
+		{.px = 0, .py = 1},
+		{.px = 1, .py = 0},
+		{.px = 1, .py = 1},
+		{.px = 1, .py = -1},
 
-	if (axss_ini == 0) {
-		/* initialize axises shortcut */
-		int px, py;
-		int x, y;
-		int pos = -1, flip_size;
-		unsigned char for_flip[MAX_DIM];
-
-		axss_ini = 1;
-		for (px = 0; px < MAX_DIM; px++) {
-			for (py = 0; py < MAX_DIM; py++) {
-				/* LEFT->RIGHT */
-				flip_size = 0;
-				for (x = 0, y = py; x < MAX_DIM; x++) {
-					if (x == px) pos = flip_size;
-					for_flip[flip_size++] = &(state[x][y])-(CHIP_COLOR*)state;
-				}
-				XMEMCPY(axss[px][py].lr.ofs, for_flip, sizeof(for_flip));
-				axss[px][py].lr.size = flip_size;
-				axss[px][py].lr.pos = pos;
-				/* UP->DOWN */
-				flip_size = 0;
-				for (x = px, y = 0; y < MAX_DIM; y++) {
-					if (y == py) pos = flip_size;
-					for_flip[flip_size++] = &(state[x][y])-(CHIP_COLOR*)state;
-				}
-				XMEMCPY(axss[px][py].ud.ofs, for_flip, sizeof(for_flip));
-				axss[px][py].ud.size = flip_size;
-				axss[px][py].ud.pos = pos;
-				/* UP_LEFT -> DOWN_RIGHT */ 
-				flip_size = 0;
-				/* simple solution */
-				x = max(0, (px - py));
-				y = max(0, (py - px));
-				for (; (x < MAX_DIM) && (y < MAX_DIM); x++, y++) {
-					if (x == px) pos = flip_size;
-					for_flip[flip_size++] = &(state[x][y])-(CHIP_COLOR*)state;
-				}
-				XMEMCPY(axss[px][py].uldr.ofs, for_flip, sizeof(for_flip));
-				axss[px][py].uldr.size = flip_size;
-				axss[px][py].uldr.pos = pos;
-				/* UP_RIGHT->DOWN_LEFT */
-				/* choose between two possible UP_RIGHT cases (y=0 or x=7) */
-				flip_size = 0;
-				/* try y=0 */
-				y = 0;
-				x = py + px;
-				if (x >= MAX_DIM) {
-					/* try x=7 */
-					x = MAX_DIM - 1;
-					y = py + px - x;
-				}
-				for (; (x >= 0) && (y < MAX_DIM); x--, y++) {
-					if (x == px) pos = flip_size;
-					for_flip[flip_size++] = &(state[x][y])-(CHIP_COLOR*)state;
-				}
-				XMEMCPY(axss[px][py].urdl.ofs, for_flip, sizeof(for_flip));
-				axss[px][py].urdl.size = flip_size;
-				axss[px][py].urdl.pos = pos;
-			}
-		}
+		{.px = 0, .py = -1},
+		{.px = -1, .py = 0},
+		{.px = -1, .py = -1},
+		{.px = -1, .py = 1}
+	};
+	AXIS_ITERATOR *i;
+	int n;
+	int flip = 0;
+	for (n=0; n<dim(axises); n++) {
+		i = axises+n;
+		i->x = turn->x;
+		i->y = turn->y;
+		flip += flip_row(state, i, turn->color);
 	}
-	flip += flip_row((CHIP_COLOR *)state, axss[turn->x][turn->y].lr.ofs, axss[turn->x][turn->y].lr.size, turn->color, axss[turn->x][turn->y].lr.pos);
-	flip += flip_row((CHIP_COLOR *)state, axss[turn->x][turn->y].ud.ofs, axss[turn->x][turn->y].ud.size, turn->color, axss[turn->x][turn->y].ud.pos);
-	flip += flip_row((CHIP_COLOR *)state, axss[turn->x][turn->y].uldr.ofs, axss[turn->x][turn->y].uldr.size, turn->color, axss[turn->x][turn->y].uldr.pos);
-	flip += flip_row((CHIP_COLOR *)state, axss[turn->x][turn->y].urdl.ofs, axss[turn->x][turn->y].urdl.size, turn->color, axss[turn->x][turn->y].urdl.pos);
-
 	return flip;
 }
-
 
 /* 
  * Make turn on position 'state'.
