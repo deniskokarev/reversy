@@ -28,7 +28,7 @@ static const CHIP_COLOR m_weight[MAX_DIM][MAX_DIM] = {
  */
 static GAME_SCORE game_eval(const GAME_STATE state, CHIP_COLOR color) {
 	GAME_SCORE eval = 0;
-	short int	i, j;
+	signed char	i, j;
 	
 	for (i = 0; i < MAX_DIM; i++)
 		for (j = 0; j < MAX_DIM; j++) 
@@ -44,10 +44,10 @@ GAME_SCORE find_best_turn_intr(GAME_TURN *best_turn,
 							   int (*is_stop)(int depth, void *param),
 							   void *is_stop_param)
 {
-	GAME_TURN	t, adv_best_turn;
 	GAME_STATE	tmp_state;
-	int			turns_revised = 0;
+	GAME_TURN	t, adv_best_turn;
 	GAME_SCORE		ascore, best_score;
+	char			turns_revised = 0;
 	
 	/* assume there are no turns */
 	best_turn->x = -1;

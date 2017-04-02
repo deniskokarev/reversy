@@ -86,7 +86,7 @@ static int quick_validate_turn(const GAME_STATE state, const GAME_TURN *turn) {
  * Make turn on position 'state'.
  * Return amount of flip overs
  */
-int make_turn(GAME_STATE state, GAME_TURN *turn) {
+int make_turn(GAME_STATE state, const GAME_TURN *turn) {
 	char flip = 0;
 
 	if (quick_validate_turn(state, turn)) {
@@ -131,7 +131,7 @@ int validate_turn(const GAME_STATE state, const GAME_TURN *turn) {
  * Makes a list of possible turns in game position 'state' by color 'color'
  * returns 0 if no possible turns left
  */
-int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], GAME_STATE state, CHIP_COLOR color) {
+int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], const GAME_STATE state, CHIP_COLOR color) {
 	GAME_TURN	t;
 	int			i = 0;
 
@@ -162,16 +162,18 @@ int chips_count(const GAME_STATE state, CHIP_COLOR color) {
 	return i;
 }
 
+/*
+ * Game is over when neither color can make a turn
+ */
 int game_is_over(const GAME_STATE state) {
-	signed char	x, y;
-
-	for (x = 0; x < MAX_DIM; x++) {	
-		for (y = 0; y < MAX_DIM; y++) {
-			if (SAME_COLOR(state[x][y], COLOR_VACANT)) {
-				return 0;
-			}
-		}
-	}
+	const static CHIP_COLOR all_colors[] = {COLOR_NEG, COLOR_POS, COLOR_VACANT};
+	GAME_TURN	t;
+	const CHIP_COLOR  *color = all_colors;
+	
+	for (t.color = *color; t.color != COLOR_VACANT; t.color = *color++)
+		for (t.x = 0; t.x < MAX_DIM; t.x++)
+			for (t.y = 0; t.y < MAX_DIM; t.y++)
+				if (validate_turn(state, &t) == E_OK)
+					return 0;
 	return 1;
 }
-

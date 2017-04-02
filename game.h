@@ -4,7 +4,11 @@
 #define MAX_DIM			8
 
 #ifndef XMEMCPY
-/* inline memcpy(void *tgt, void *src, int nsize) function */
+/*
+ * inline memcpy(void *tgt, void *src, int nsize) function
+ * NB!!! for speed requires the src and tgt to be 8 byte aligned
+ * meaning your GAME_STATE should be aligned as well
+ */
 #define XMEMCPY(T, S, N) { \
 	int i; \
 	char *t1, *s1; \
@@ -51,28 +55,30 @@ typedef struct tagGAME_TURN {
  * Makes a list of possible turns in game position 'state' by color 'color'
  * returns 0 if no possible turns left
  */
-int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], GAME_STATE state, CHIP_COLOR color);
+int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], const GAME_STATE state, CHIP_COLOR color);
 
 /* 
  * Make turn on position 'state'.
  */
-int make_turn(GAME_STATE state, GAME_TURN *turn);
+int make_turn(GAME_STATE state, const GAME_TURN *turn);
 
 /*
  * Validate turn
  * returns
- * 0 - E_OK - Ok
- * 1 - E_OCC - is already occupied
- * 2 - E_NO_OPP - no opposite chips around
- * 3 - E_NO_FLIPS - no flips
+ * E_OK - Ok
+ * E_OCC - is already occupied
+ * E_NO_FLIPS - no flips
  */
 int validate_turn(const GAME_STATE state, const GAME_TURN *turn);
 
 /*
- * Account chips of certain color on position 'state'
+ * Count chips of certain color on position 'state'
  */
 int chips_count(const GAME_STATE state, CHIP_COLOR color);
 
+/*
+ * Game is over when neither color can make a turn
+ */
 int game_is_over(const GAME_STATE state);
 
 #endif /* #ifndef __GAME_H__ */

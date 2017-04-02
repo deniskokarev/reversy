@@ -155,6 +155,11 @@ int main(int argc, char *argv[]) {
 		state[4][4] = COLOR_NEG;
 		state[4][3] = COLOR_POS;
 	}
+	if (game_is_over(state)) {
+		fprintf(flog, "Game is over\n");
+		print_position(state);
+		exit(255);
+	}
 	if (comp_turn) {
 		fprintf(flog, "Thinking...\n");
 		find_best_turn(&turn, state, color, srch_depth);
@@ -171,11 +176,6 @@ int main(int argc, char *argv[]) {
 	} else {
 		fprintf(flog, "Invalid turn.\n");
 		exit(1);
-	}
-	if (game_is_over(state)) {
-		printf("Game is over\n");
-		fprintf(flog, "Game is over\n");
-		exit(255);
 	}
 	return 0;
 }
