@@ -26,18 +26,18 @@ static const CHIP_COLOR m_weight[MAX_DIM][MAX_DIM] = {
 /*
  * Evaluate position 'state', using estimation matrix
  */
-static GAME_SCORE game_eval(const GAME_STATE state, CHIP_COLOR color) {
+static GAME_SCORE game_eval(const GAME_STATE *state, CHIP_COLOR color) {
 	GAME_SCORE eval = 0;
 	signed char	i, j;
 	
 	for (i = 0; i < MAX_DIM; i++)
 		for (j = 0; j < MAX_DIM; j++) 
-			eval += state[i][j]*m_weight[i][j];
+			eval += state->b[i][j]*m_weight[i][j];
 	return eval * color;
 }
 
 GAME_SCORE find_best_turn_intr(GAME_TURN *best_turn,
-							   GAME_STATE state,
+							   const GAME_STATE *state,
 							   CHIP_COLOR color,
 							   int depth,
 							   GAME_SCORE simt,
@@ -57,26 +57,24 @@ GAME_SCORE find_best_turn_intr(GAME_TURN *best_turn,
 	if (is_stop && is_stop(depth, is_stop_param))
 		return best_score;
 
-	/* copy game position */
-	XMEMCPY(tmp_state, state, sizeof(GAME_STATE));
-
+	tmp_state = *state;
 	t.color = color;
 	for (t.x = 0; t.x < MAX_DIM; t.x++) {
 		for (t.y = 0; t.y < MAX_DIM; t.y++) {
-			if (make_turn(tmp_state, &t)) {
+			if (make_turn(&tmp_state, &t)) {
 				if (depth) {
 					/* find best for contendor */
 					ascore = -find_best_turn_intr(&adv_best_turn,
-												  tmp_state,
+												  &tmp_state,
 												  ALTER_COLOR(color),
 												  depth-1,
 												  -best_score,
 												  is_stop,
 												  is_stop_param);
 				} else {
-					ascore = game_eval(tmp_state, color);
+					ascore = game_eval(&tmp_state, color);
 				}
-				XMEMCPY(tmp_state, state, sizeof(GAME_STATE)); /* undo make_turn() */
+				tmp_state = *state; /* undo make_turn() */
 				turns_revised++;
 				if (ascore > best_score) {
 					best_score = ascore;
@@ -95,7 +93,7 @@ GAME_SCORE find_best_turn_intr(GAME_TURN *best_turn,
 		if (depth) {
 			/* try turn of the contendor */
 			best_score = -find_best_turn_intr(&adv_best_turn,
-											  tmp_state,
+											  &tmp_state,
 											  ALTER_COLOR(color),
 											  depth-1,
 											  -simt,
@@ -114,7 +112,7 @@ ret:
 }
 
 GAME_SCORE find_best_turn(GAME_TURN *best_turn, 
-							   GAME_STATE state,
+							   const GAME_STATE *state,
 							   CHIP_COLOR color,
 							   int depth)
 {

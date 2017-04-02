@@ -14,11 +14,11 @@ typedef enum {
 	AXIS_DIR_FORWARD = 1
 } AXIS_DIR;
 
-static CHIP_COLOR *axis_iter_next(GAME_STATE state, AXIS_ITERATOR *iter, AXIS_DIR dir) {
+static CHIP_COLOR *axis_iter_next(GAME_STATE *state, AXIS_ITERATOR *iter, AXIS_DIR dir) {
 	iter->x += iter->px*dir;
 	iter->y += iter->py*dir;
 	if (iter->x >= 0 && iter->x < MAX_DIM && iter->y >= 0 && iter->y < MAX_DIM)
-		return &state[iter->x][iter->y];
+		return &state->b[iter->x][iter->y];
 	else
 		return 0;
 }
@@ -27,7 +27,7 @@ static CHIP_COLOR *axis_iter_next(GAME_STATE state, AXIS_ITERATOR *iter, AXIS_DI
  * Flip over 1D array of chips.
  * Return number of captured ones.
  */
-static char flip_row(GAME_STATE state, AXIS_ITERATOR *iter, CHIP_COLOR target_color) {
+static char flip_row(GAME_STATE *state, AXIS_ITERATOR *iter, CHIP_COLOR target_color) {
 	CHIP_COLOR	*pcolor;
 	CHIP_COLOR opposite_color = ALTER_COLOR(target_color);
 	char flip = 0;
@@ -55,7 +55,7 @@ static char flip_row(GAME_STATE state, AXIS_ITERATOR *iter, CHIP_COLOR target_co
  * for every axis.
  * Return number of captured chips. 
  */
-static char flip_axises(GAME_STATE state, const GAME_TURN *turn) {
+static char flip_axises(GAME_STATE *state, const GAME_TURN *turn) {
 	AXIS_ITERATOR i;
 	char flip = 0;
 	/* VERTIVAL, HORIZONTAL, DIAGONAL, CROSS-DIAGONAL in both directions */
@@ -77,22 +77,22 @@ static char flip_axises(GAME_STATE state, const GAME_TURN *turn) {
  * 1 - Yes
  * 0 - No
  */
-static int quick_validate_turn(const GAME_STATE state, const GAME_TURN *turn) {
+static int quick_validate_turn(const GAME_STATE *state, const GAME_TURN *turn) {
 	/* you cannot make a turn if this place is already occupied */
-	return (state[turn->x][turn->y] == COLOR_VACANT);
+	return (state->b[turn->x][turn->y] == COLOR_VACANT);
 }
 
 /* 
  * Make turn on position 'state'.
  * Return amount of flip overs
  */
-int make_turn(GAME_STATE state, const GAME_TURN *turn) {
+int make_turn(GAME_STATE *state, const GAME_TURN *turn) {
 	char flip = 0;
 
 	if (quick_validate_turn(state, turn)) {
 		if ((flip = flip_axises(state, turn)) > 0) {
 			/* if there is something to capture */
-			state[turn->x][turn->y] = turn->color;
+			state->b[turn->x][turn->y] = turn->color;
 		}
 	}
 	return flip;
@@ -107,7 +107,7 @@ int make_turn(GAME_STATE state, const GAME_TURN *turn) {
  * E_OCC - is already occupied
  * E_NO_FLIPS - no flips
  */
-int validate_turn(const GAME_STATE state, const GAME_TURN *turn) {
+int validate_turn(const GAME_STATE *state, const GAME_TURN *turn) {
 	GAME_STATE	tmp_state;
 	int			e_code;
 
@@ -115,8 +115,8 @@ int validate_turn(const GAME_STATE state, const GAME_TURN *turn) {
 		e_code = E_OCC;
 	} else {
 		/* Quick checking is OK */
-		XMEMCPY(tmp_state, state, sizeof(GAME_STATE));
-		if (! flip_axises(tmp_state, turn)) {
+		tmp_state = *state;
+		if (! flip_axises(&tmp_state, turn)) {
 			/* Slow flip_axises is ERR */
 			e_code = E_NO_FLIPS;
 		} else {
@@ -131,7 +131,7 @@ int validate_turn(const GAME_STATE state, const GAME_TURN *turn) {
  * Makes a list of possible turns in game position 'state' by color 'color'
  * returns 0 if no possible turns left
  */
-int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], const GAME_STATE state, CHIP_COLOR color) {
+int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], const GAME_STATE *state, CHIP_COLOR color) {
 	GAME_TURN	t;
 	int			i = 0;
 
@@ -149,13 +149,13 @@ int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], const GAME_STATE state, CH
 /*
  * Account chips of certain color on position 'state'
  */
-int chips_count(const GAME_STATE state, CHIP_COLOR color) {
+int chips_count(const GAME_STATE *state, CHIP_COLOR color) {
 	char	i = 0;
 	signed char	x, y;
 
 	for (x = 0; x < MAX_DIM; x++) {
 		for (y = 0; y < MAX_DIM; y++) {
-			if (SAME_COLOR(state[x][y], color))
+			if (SAME_COLOR(state->b[x][y], color))
 				i++;
 		}
 	}
@@ -165,7 +165,7 @@ int chips_count(const GAME_STATE state, CHIP_COLOR color) {
 /*
  * Game is over when neither color can make a turn
  */
-int game_is_over(const GAME_STATE state) {
+int game_is_over(const GAME_STATE *state) {
 	const static CHIP_COLOR all_colors[] = {COLOR_NEG, COLOR_POS, COLOR_VACANT};
 	GAME_TURN	t;
 	const CHIP_COLOR  *color = all_colors;

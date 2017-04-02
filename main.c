@@ -15,18 +15,18 @@ CHIP_COLOR abbr2color(char abbr) {
 	return (abbr == '.' ? COLOR_VACANT : (abbr == '+' ? COLOR_POS : COLOR_NEG));
 }
 
-void print_position(GAME_STATE state) {
+void print_position(const GAME_STATE *state) {
 	int		x, y;
 
 	for (y = 0; y < MAX_DIM; y++) {
 		for (x = 0; x < MAX_DIM; x++) {
-			printf(" %c", color2abbr(state[x][y]));
+			printf(" %c", color2abbr(state->b[x][y]));
 		}
 		printf("\n");
 	}
 }
 
-void read_position(GAME_STATE state, FILE *fin) {
+void read_position(GAME_STATE *state, FILE *fin) {
 	int		x = 0, y = 0;
 	char	ch;
 
@@ -36,7 +36,7 @@ void read_position(GAME_STATE state, FILE *fin) {
 		case '+':
 		case '*':
 		case '.':
-			state[x++][y] = abbr2color(ch);
+			state->b[x++][y] = abbr2color(ch);
 			break;
 		case '\n':
 			y++;
@@ -141,7 +141,7 @@ int main(int argc, char *argv[]) {
 		} else {
 			if ((fin = fopen(fin_name, "r"))) {
 				fprintf(flog, "Reading from %s ...\n", fin_name);
-				read_position(state, fin);
+				read_position(&state, fin);
 			} else {
 				perror("Can't open game position file");
 				exit(1);
@@ -149,30 +149,30 @@ int main(int argc, char *argv[]) {
 		}
 	} else {
 		fprintf(flog, "Game started from the scratch\n");
-		memset(state, COLOR_VACANT, sizeof(GAME_STATE));
-		state[3][3] = COLOR_NEG;
-		state[3][4] = COLOR_POS;
-		state[4][4] = COLOR_NEG;
-		state[4][3] = COLOR_POS;
+		memset(&state.b, COLOR_VACANT, sizeof(state.b));
+		state.b[3][3] = COLOR_NEG;
+		state.b[3][4] = COLOR_POS;
+		state.b[4][4] = COLOR_NEG;
+		state.b[4][3] = COLOR_POS;
 	}
-	if (game_is_over(state)) {
+	if (game_is_over(&state)) {
 		fprintf(flog, "Game is over\n");
-		print_position(state);
+		print_position(&state);
 		exit(255);
 	}
 	if (comp_turn) {
 		fprintf(flog, "Thinking...\n");
-		find_best_turn(&turn, state, color, srch_depth);
+		find_best_turn(&turn, &state, color, srch_depth);
 		if (turn.x < 0) {
 			fprintf(flog, "There are no turns by color '%c'\n", color2abbr(color));
-			print_position(state);
+			print_position(&state);
 			exit(254);
 		}
 	}
 	fprintf(flog, "Making turn by '%c' to [%d:%d]\n", color2abbr(turn.color), (int)turn.x+1, (int)turn.y+1);
-	if ( (e_code = make_turn(state, &turn)) ) {
+	if ( (e_code = make_turn(&state, &turn)) ) {
 		fprintf(flog, "We captured %d chip(s)\n", e_code);
-		print_position(state);
+		print_position(&state);
 	} else {
 		fprintf(flog, "Invalid turn.\n");
 		exit(1);

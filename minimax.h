@@ -12,7 +12,7 @@
  * Look ahead in 'depth' moves
  */
 GAME_SCORE find_best_turn(GAME_TURN *best_turn, 
-					  GAME_STATE state,
+					  const GAME_STATE *state,
 					  CHIP_COLOR color,
 					  int depth);
 
@@ -25,7 +25,7 @@ GAME_SCORE find_best_turn(GAME_TURN *best_turn,
  * is_stop() is for user abort verification
  */
 GAME_SCORE find_best_turn_intr(GAME_TURN *best_turn,
-							   GAME_STATE state,
+							   const GAME_STATE *state,
 							   CHIP_COLOR color,
 							   int depth,
 							   GAME_SCORE simt,
