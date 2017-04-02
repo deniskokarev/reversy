@@ -3,7 +3,8 @@
 /*
  * The estimated value for each field on the game board
  */
-GAME_SCORE m_weight[MAX_DIM][MAX_DIM] = {
+/* CHIP_COLOR == signed char */
+static const CHIP_COLOR m_weight[MAX_DIM][MAX_DIM] = {
 	{ 5, -1,  3,  3,  3,  3, -1,  5},
  
 	{-1, -2, -1, -1, -1, -1, -2, -1},
@@ -25,16 +26,14 @@ GAME_SCORE m_weight[MAX_DIM][MAX_DIM] = {
 /*
  * Evaluate position 'state', using estimation matrix
  */
-GAME_SCORE game_eval(GAME_STATE state, CHIP_COLOR color) {
-	GAME_SCORE	eval[3] = {0, 0, 0};
-	int		x, y;	
-
-	for (x = 0; x < MAX_DIM; x++) {
-		for (y = 0; y < MAX_DIM; y++) {
-			eval[state[x][y]] += m_weight[x][y];
-		}
-	}
-	return eval[color] - eval[ALTER_COLOR(color)];
+static GAME_SCORE game_eval(const GAME_STATE state, CHIP_COLOR color) {
+	GAME_SCORE eval = 0;
+	short int	i, j;
+	
+	for (i = 0; i < MAX_DIM; i++)
+		for (j = 0; j < MAX_DIM; j++) 
+			eval += state[i][j]*m_weight[i][j];
+	return eval * color;
 }
 
 GAME_SCORE find_best_turn_intr(GAME_TURN *best_turn,

@@ -3,6 +3,7 @@
 
 #define MAX_DIM			8
 
+#ifndef XMEMCPY
 /* inline memcpy(void *tgt, void *src, int nsize) function */
 #define XMEMCPY(T, S, N) { \
 	int i; \
@@ -15,13 +16,13 @@
 	for(i<<=3; i<N; i++) \
 		*t1++ = *s1++; \
 }
+#endif
 
-
-typedef unsigned char CHIP_COLOR;
+typedef signed char CHIP_COLOR;
 
 #define	COLOR_VACANT	((CHIP_COLOR)0)
 #define	COLOR_WHITE		((CHIP_COLOR)1)
-#define	COLOR_BLACK		((CHIP_COLOR)2)
+#define	COLOR_BLACK		((CHIP_COLOR)-1)
 
 /*
  * This is a Reversy game field 8x8 grid
@@ -38,8 +39,8 @@ typedef struct tagGAME_TURN {
 
 /* invalid for OPPOSITE_COLOR(COLOR_VACANT, COLOR_VACANT)*/
 #define SAME_COLOR(A, B)		(A == B)
-#define OPPOSITE_COLOR(A, B)	((A | B) == 0x0003)
-#define ALTER_COLOR(A)			(CHIP_COLOR)(A ^ 0x0003)
+#define OPPOSITE_COLOR(A, B)	((A + B) == 0)
+#define ALTER_COLOR(A)			(-(A))
 
 #define E_OK		0
 #define E_OCC		1
@@ -56,7 +57,6 @@ int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], GAME_STATE state, CHIP_COL
 
 /* 
  * Make turn on position 'state'.
- * Return amount of flip overs
  */
 int make_turn(GAME_STATE state, GAME_TURN *turn);
 
@@ -66,7 +66,7 @@ int make_turn(GAME_STATE state, GAME_TURN *turn);
  * 0 - E_OK - Ok
  * otherwise - error
  */
-int quick_validate_turn(GAME_STATE state, GAME_TURN *turn);
+int quick_validate_turn(const GAME_STATE state, const GAME_TURN *turn);
 
 /*
  * Validate turn
@@ -77,13 +77,13 @@ int quick_validate_turn(GAME_STATE state, GAME_TURN *turn);
  * 2 - E_NO_OPP - no opposite chips around
  * 3 - E_NO_FLIPS - no flips
  */
-int validate_turn(GAME_STATE state, GAME_TURN *turn);
+int validate_turn(const GAME_STATE state, const GAME_TURN *turn);
 
 /*
  * Account chips of certain color on position 'state'
  */
-int chips_count(GAME_STATE state, CHIP_COLOR color);
+int chips_count(const GAME_STATE state, CHIP_COLOR color);
 
-int game_is_over(GAME_STATE state);
+int game_is_over(const GAME_STATE state);
 
 #endif /* #ifndef __GAME_H__ */

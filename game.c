@@ -15,15 +15,12 @@ typedef enum {
 } AXIS_DIR;
 
 static CHIP_COLOR *axis_iter_next(GAME_STATE state, AXIS_ITERATOR *iter, AXIS_DIR dir) {
-	int new_x = iter->x + iter->px*dir;
-	int new_y = iter->y + iter->py*dir;
-	if (new_x >= 0 && new_x < MAX_DIM && new_y >= 0 && new_y < MAX_DIM) {
-		iter->x = new_x;
-		iter->y = new_y;
+	iter->x += iter->px*dir;
+	iter->y += iter->py*dir;
+	if (iter->x >= 0 && iter->x < MAX_DIM && iter->y >= 0 && iter->y < MAX_DIM)
 		return &state[iter->x][iter->y];
-	} else {
+	else
 		return 0;
-	}
 }
 
 /*
@@ -34,12 +31,13 @@ static int flip_row(GAME_STATE state, AXIS_ITERATOR *iter, CHIP_COLOR target_col
 	int flip = 0;
 	CHIP_COLOR	*pcolor;
 	int n = 0;
+	CHIP_COLOR opposite_color = ALTER_COLOR(target_color);
 	pcolor = axis_iter_next(state, iter, AXIS_DIR_BACKWARD);
-	while (pcolor && OPPOSITE_COLOR(*pcolor, target_color)) {
+	while (pcolor && *pcolor == opposite_color) {
 		pcolor = axis_iter_next(state, iter, AXIS_DIR_BACKWARD);
 		n++;
 	}
-	if (pcolor && SAME_COLOR(*pcolor, target_color)) {
+	if (pcolor && *pcolor == target_color) {
 		while (n>0) {
 			pcolor = axis_iter_next(state, iter, AXIS_DIR_FORWARD);
 			*pcolor = target_color;
@@ -57,27 +55,18 @@ static int flip_row(GAME_STATE state, AXIS_ITERATOR *iter, CHIP_COLOR target_col
  * for every axis.
  * Return number of captured chips. 
  */
-int flip_axises(GAME_STATE state, GAME_TURN *turn) {
-	/* VERTIVAL, HORIZONTAL, DIAGONAL, CROSS-DIAGONAL in both directions */
-	static AXIS_ITERATOR axises[4*2] = {
-		{.px = 0, .py = 1},
-		{.px = 1, .py = 0},
-		{.px = 1, .py = 1},
-		{.px = 1, .py = -1},
-
-		{.px = 0, .py = -1},
-		{.px = -1, .py = 0},
-		{.px = -1, .py = -1},
-		{.px = -1, .py = 1}
-	};
-	AXIS_ITERATOR *i;
-	int n;
+int flip_axises(GAME_STATE state, const GAME_TURN *turn) {
+	AXIS_ITERATOR i;
 	int flip = 0;
-	for (n=0; n<dim(axises); n++) {
-		i = axises+n;
-		i->x = turn->x;
-		i->y = turn->y;
-		flip += flip_row(state, i, turn->color);
+	/* VERTIVAL, HORIZONTAL, DIAGONAL, CROSS-DIAGONAL in both directions */
+	for (i.px = -1; i.px <= 1; i.px++) {
+		for (i.py = -1; i.py <= 1; i.py++) {
+			if (i.px | i.py) {	/* except direction 0,0 */
+				i.x = turn->x;
+				i.y = turn->y;
+				flip += flip_row(state, &i, turn->color);
+			}
+		}
 	}
 	return flip;
 }
@@ -103,24 +92,20 @@ int make_turn(GAME_STATE state, GAME_TURN *turn) {
  * 0 - E_OK - Ok
  * otherwise - error
  */
-int quick_validate_turn(GAME_STATE state, GAME_TURN *turn) {
-	int			x, y;
-	CHIP_COLOR	color;
-	
-	x = turn->x;
-	y = turn->y;
-	color = turn->color;
+int quick_validate_turn(const GAME_STATE state, const GAME_TURN *turn) {
 	/* you cannot make a turn if this place is already occupied */
-	if (state[x][y] != COLOR_VACANT) return E_OCC;
+	if (state[turn->x][turn->y] != COLOR_VACANT) return E_OCC;
 
+	const int xb = min(turn->x-1, 0);
+	const int xe = max(turn->x+1, MAX_DIM);
+	const int yb = min(turn->y-1, 0);
+	const int ye = max(turn->y+1, MAX_DIM);
+	const CHIP_COLOR ac = ALTER_COLOR(turn->color);
 	/* you cannot make a turn if there is no opposite chips around */
-	for (x = min(turn->x-1, 0); x < max(turn->x+1, MAX_DIM); x++) {
-		for (y = min(turn->y-1, 0); y < max(turn->y+1, MAX_DIM); y++) {
-			if (OPPOSITE_COLOR(state[x][y], color)) {
+	for (int x = xb; x < xe; x++)
+		for (int y = yb; y < ye; y++)
+			if (state[x][y] == ac)
 				return E_OK;
-			}
-		}
-	}
 	return E_NO_OPP; /* no opposites around */
 }
 
@@ -133,7 +118,7 @@ int quick_validate_turn(GAME_STATE state, GAME_TURN *turn) {
  * 2 - E_NO_OPP - no opposite chips around
  * 3 - E_NO_FLIPS - no flips
  */
-int validate_turn(GAME_STATE state, GAME_TURN *turn) {
+int validate_turn(const GAME_STATE state, const GAME_TURN *turn) {
 	GAME_STATE	tmp_state;
 	int			e_code;
 
@@ -171,7 +156,7 @@ int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], GAME_STATE state, CHIP_COL
 /*
  * Account chips of certain color on position 'state'
  */
-int chips_count(GAME_STATE state, CHIP_COLOR color) {
+int chips_count(const GAME_STATE state, CHIP_COLOR color) {
 	int	i = 0;
 	int	x, y;
 
@@ -184,7 +169,7 @@ int chips_count(GAME_STATE state, CHIP_COLOR color) {
 	return i;
 }
 
-int game_is_over(GAME_STATE state) {
+int game_is_over(const GAME_STATE state) {
 	int	x, y;
 
 	for (x = 0; x < MAX_DIM; x++) {	

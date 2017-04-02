@@ -7,8 +7,8 @@
 #include "minimax.h"
 
 char color2abbr(CHIP_COLOR color) {
-	static char abbr[3] = { '.', '+', '*' };
-	return abbr[color % 4];
+	static char abbr[3] = { '*', '.', '+' };
+	return abbr[(color+1) % 3];
 }
 
 CHIP_COLOR abbr2color(char abbr) {
