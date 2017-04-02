@@ -63,33 +63,31 @@ GAME_SCORE find_best_turn_intr(GAME_TURN *best_turn,
 	t.color = color;
 	for (t.x = 0; t.x < MAX_DIM; t.x++) {
 		for (t.y = 0; t.y < MAX_DIM; t.y++) {
-			if (! quick_validate_turn(tmp_state, &t)) {
-				if (make_turn(tmp_state, &t)) {
-					if (depth) {
-						/* find best for contendor */
-						ascore = -find_best_turn_intr(&adv_best_turn,
-													  tmp_state,
-													  ALTER_COLOR(color),
-													  depth-1,
-													  -best_score,
-													  is_stop,
-													  is_stop_param);
-					} else {
-						ascore = game_eval(tmp_state, color);
-					}
-					XMEMCPY(tmp_state, state, sizeof(GAME_STATE)); /* undo make_turn() */
-					turns_revised++;
-					if (ascore > best_score) {
-						best_score = ascore;
-						*best_turn = t;
-					}
-#ifndef ALPHA_BETA_CUT_OFF
-					/* Check for Alpha or Beta cut on the game tree */ 
- 					if (best_score > simt) {
- 						goto ret;
- 					}
-#endif
+			if (make_turn(tmp_state, &t)) {
+				if (depth) {
+					/* find best for contendor */
+					ascore = -find_best_turn_intr(&adv_best_turn,
+												  tmp_state,
+												  ALTER_COLOR(color),
+												  depth-1,
+												  -best_score,
+												  is_stop,
+												  is_stop_param);
+				} else {
+					ascore = game_eval(tmp_state, color);
 				}
+				XMEMCPY(tmp_state, state, sizeof(GAME_STATE)); /* undo make_turn() */
+				turns_revised++;
+				if (ascore > best_score) {
+					best_score = ascore;
+					*best_turn = t;
+				}
+#ifndef ALPHA_BETA_CUT_OFF
+				/* Check for Alpha or Beta cut on the game tree */ 
+				if (best_score > simt) {
+					goto ret;
+				}
+#endif
 			}
 		}
 	}

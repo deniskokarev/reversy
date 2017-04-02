@@ -21,8 +21,8 @@
 typedef signed char CHIP_COLOR;
 
 #define	COLOR_VACANT	((CHIP_COLOR)0)
-#define	COLOR_WHITE		((CHIP_COLOR)1)
-#define	COLOR_BLACK		((CHIP_COLOR)-1)
+#define	COLOR_POS		((CHIP_COLOR)1)
+#define	COLOR_NEG		((CHIP_COLOR)-1)
 
 /*
  * This is a Reversy game field 8x8 grid
@@ -34,12 +34,10 @@ typedef CHIP_COLOR GAME_STATE [MAX_DIM][MAX_DIM];
  */
 typedef struct tagGAME_TURN {
 	CHIP_COLOR		color;
-	int				x, y;
+	signed char		x, y;
 } GAME_TURN;
 
-/* invalid for OPPOSITE_COLOR(COLOR_VACANT, COLOR_VACANT)*/
 #define SAME_COLOR(A, B)		(A == B)
-#define OPPOSITE_COLOR(A, B)	((A + B) == 0)
 #define ALTER_COLOR(A)			(-(A))
 
 #define E_OK		0
@@ -61,16 +59,7 @@ int make_turn_list(GAME_TURN turn[MAX_DIM * MAX_DIM], GAME_STATE state, CHIP_COL
 int make_turn(GAME_STATE state, GAME_TURN *turn);
 
 /*
- * Make quick validation; sutable for automatic turn generation
- * returns. The final answer could be made only by flip_axises()
- * 0 - E_OK - Ok
- * otherwise - error
- */
-int quick_validate_turn(const GAME_STATE state, const GAME_TURN *turn);
-
-/*
  * Validate turn
- * Don't use it in automatic procedures, because it is slow.
  * returns
  * 0 - E_OK - Ok
  * 1 - E_OCC - is already occupied
