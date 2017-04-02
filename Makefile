@@ -17,7 +17,6 @@ $(PROG): main.o $(LIB)
 
 $(LIB): $(OBJS)
 	ar -r $(LIB) $(OBJS)
-	#ranlib $(LIB)
 
 clean:
 	rm -f core *.o $(PROG) $(LIB) *~
