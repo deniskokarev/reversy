@@ -9,12 +9,11 @@
 #define __MINIMAX_H__
 
 #include "game.h"
-#include <limits.h>
 
 /** our score will fit into 16bit val */
 #define GAME_SCORE			short
-#define GAME_SCORE_MAX		SHRT_MAX ///< 0x7FFF-1
-#define GAME_SCORE_MIN		SHRT_MIN ///< 0x8000+1
+#define GAME_SCORE_MAX		0x7FFF-1
+#define GAME_SCORE_MIN		0x8000+1
 
 /**
  * @brief run minimax search for the best turn
